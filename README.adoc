@@ -13,6 +13,9 @@ Internamente, audiowmark usa o algoritmo patchwork para esconder os dados no esp
 Martin Steinebach: Digitale Wasserzeichen für Audiodaten.
 Darmstadt University of Technology 2004, ISBN 3-8322-2507-2
 
+Tutorial em português para instalação no Windows
+https://drive.google.com/drive/folders/1GYIOcStToDKknz2b4K5jeJ5it-EalJht?usp=sharing 
+
 Se você tiver interesse nos detalhes de como audiowmark funciona, existe um documento separado:
 https://uplex.de/audiowmark/audiowmark-developer.pdf
  [documentação para desenvolvedores].
