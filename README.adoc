@@ -1,789 +1,212 @@
-= audiowmark - Audio Watermarking
+= audiowmark - Marcação de Áudio
 
-== Description
+== Descrição
 
-`audiowmark` is an Open Source (GPL) solution for audio watermarking.
+audiowmark é uma solução Open Source (GPL) para marcação de áudio.
 
-A sound file is read by the software, and a 128-bit message is stored in a
-watermark in the output sound file. For human listeners, the files typically
-sound the same.
+Um arquivo de áudio é lido pelo software, e uma mensagem de 128 bits é armazenada como watermark (marca d’água) no arquivo de saída. Para ouvintes humanos, os arquivos soam praticamente iguais.
 
-However, the 128-bit message can be retrieved from the output sound file. Our
-tests show, that even if the file is converted to mp3 or ogg (with bitrate 128
-kbit/s or higher), the watermark usually can be retrieved without problems. The
-process of retrieving the message does not need the original audio file (blind
-decoding).
+No entanto, a mensagem de 128 bits pode ser recuperada do arquivo de áudio de saída. Nossos testes mostram que, mesmo se o arquivo for convertido para mp3 ou ogg (com taxa de 128 kbit/s ou superior), a marca d’água geralmente pode ser recuperada sem problemas. O processo de recuperação da mensagem não precisa do arquivo original (decodificação cega).
 
-Internally, audiowmark is using the patchwork algorithm to hide the data in the
-spectrum of the audio file. The signal is split into 1024 sample frames. For
-each frame, some pseoudo-randomly selected amplitudes of the frequency bands of
-a 1024-value FFTs are increased or decreased slightly, which can be detected
-later. The algorithm used here is inspired by
+Internamente, audiowmark usa o algoritmo patchwork para esconder os dados no espectro do áudio. O sinal é dividido em frames de 1024 amostras. Para cada frame, algumas amplitudes das bandas de frequência de uma FFT de 1024 valores são aumentadas ou diminuídas ligeiramente de forma pseudo-aleatória, o que pode ser detectado posteriormente. O algoritmo é inspirado em:
 
-  Martin Steinebach: Digitale Wasserzeichen für Audiodaten.
-  Darmstadt University of Technology 2004, ISBN 3-8322-2507-2
+Martin Steinebach: Digitale Wasserzeichen für Audiodaten.
+Darmstadt University of Technology 2004, ISBN 3-8322-2507-2
 
-If you are interested in the details how `audiowmark` works, there is
-a separate
-https://uplex.de/audiowmark/audiowmark-developer.pdf[*documentation for developers*].
+Se você tiver interesse nos detalhes de como audiowmark funciona, existe um documento separado:
+https://uplex.de/audiowmark/audiowmark-developer.pdf
+ [documentação para desenvolvedores].
 
-== Open Source License
+== Licença Open Source
 
-`audiowmark` is *open source* software available under the *GPLv3
-or later* license.
+audiowmark é software open source disponível sob a licença GPLv3 ou superior.
 
 Copyright (C) 2018-2020 Stefan Westerfeld
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+Este programa é software livre: você pode redistribuí-lo e/ou modificá-lo sob os termos da GNU General Public License, publicada pela Free Software Foundation, versão 3 ou posterior.
 
-This program is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+Este programa é distribuído na esperança de ser útil, mas SEM QUALQUER GARANTIA, incluindo as garantias implícitas de COMERCIALIZAÇÃO ou ADEQUAÇÃO A UM PROPÓSITO ESPECÍFICO.
 
-You should have received a copy of the GNU General Public License
-along with this program.  If not, see <http://www.gnu.org/licenses/>.
+== Adicionando uma Watermark
 
-== Adding a Watermark
-
-To add a watermark to the soundfile in.wav with a 128-bit message (which is
-specified as hex-string):
+Para adicionar uma marca d’água ao arquivo in.wav com uma mensagem de 128 bits (especificada como hex string):
 
 [subs=+quotes]
 ....
-  *$ audiowmark add in.wav out.wav 0123456789abcdef0011223344556677*
-  Input:        in.wav
-  Output:       out.wav
-  Message:      0123456789abcdef0011223344556677
-  Strength:     10
+$ audiowmark add in.wav out.wav 0123456789abcdef0011223344556677
+Input: in.wav
+Output: out.wav
+Message: 0123456789abcdef0011223344556677
+Strength: 10
 
-  Time:         3:59
-  Sample Rate:  48000
-  Channels:     2
-  Data Blocks:  4
+Time: 3:59
+Sample Rate: 48000
+Channels: 2
+Data Blocks: 4
 ....
 
-If you want to use `audiowmark` in any serious application, please read the
-section <<rec-payload>> on how to generate the 128-bit message. Typically these
-bits should be a *hash* or *HMAC* of some sort.
+Se você quiser usar audiowmark em qualquer aplicação séria, leia a seção <<rec-payload>> sobre como gerar a mensagem de 128 bits. Normalmente, esses bits devem ser um hash ou HMAC de algum tipo.
 
-The most important options for adding a watermark are:
+As opções mais importantes para adicionar uma marca d’água são:
 
 --key <filename>::
-Use watermarking key from file <filename> (see <<key>>).
+Usa uma chave de watermark a partir do arquivo <filename> (veja <<key>>).
 
 --strength <s>::
-Set the watermarking strength (see <<strength>>).
+Define a força da marca d’água (veja <<strength>>).
 
-== Retrieving a Watermark
+== Recuperando uma Watermark
 
-To get the 128-bit message from the watermarked file, use:
+Para obter a mensagem de 128 bits do arquivo com marca d’água, use:
 
 [subs=+quotes]
 ....
-  *$ audiowmark get out.wav*
-  pattern  0:05 0123456789abcdef0011223344556677 1.358 0.059 A
-  pattern  0:57 0123456789abcdef0011223344556677 1.426 0.050 B
-  pattern  0:57 0123456789abcdef0011223344556677 1.392 0.055 AB
-  pattern  1:49 0123456789abcdef0011223344556677 1.453 0.074 A
-  pattern  2:40 0123456789abcdef0011223344556677 1.359 0.080 B
-  pattern  2:40 0123456789abcdef0011223344556677 1.406 0.077 AB
-  pattern   all 0123456789abcdef0011223344556677 1.399 0.035
-  pattern  2:58 c6141f3d25720eb0dbd0e38ee2355ff4 0.185 0.382 B
-  pattern  2:14 df659ac435f0569c67cdac1fb2e36cd8 0.178 0.391 B
-  pattern  1:58 d7d7ed21e9d6da0a4ffdd5e55ffdb623 0.176 0.389 A
-  pattern  2:59 1c13f1532eeb6c9aa719253736849d6e 0.167 0.389 A
-....
-The output of `audiowmark get` is designed to be machine readable. Each line
-that starts with `pattern` contains one decoded message. The fields are
-seperated by one or more space characters. The first field is a *timestamp*
-indicating the position of the data block. The second field is the *decoded
-message*. The results are sorted by relevance, the most relevant matches
-are shown first.
-
-The software was designed under the assumption that the message is a *hash* or
-*HMAC* of some sort. Before you start using `audiowmark` in any serious
-application, please read the section <<rec-payload>>. You - the user - should
-be able to decide whether a message is correct or not. To do this, on
-watermarking song files, you could *create a database entry* for each message
-you embedded in a watermark. During retrieval, you should perform a *database
-lookup* for each pattern `audiowmark get` outputs. If the message is not found,
-then you should assume that a decoding error occurred. In our example the
-last results did not match the correct message and need to be ignored.
-
-The third field is the *sync score* (higher is better). The synchronization
-algorithm tries to find valid data blocks in the audio file, that become
-candidates for decoding.
-
-The fourth field is the *decoding error* (lower is better). During message
-decoding, we use convolutional codes for error correction, to make the
-watermarking more robust.
-
-The fifth field is the *block type*. There are two types of data blocks,
-A blocks and B blocks. A single data block can be decoded alone, as it contains
-a complete message. However, if during watermark detection an A block followed
-by a B block was found, and the two blocks are at the expected distance, these
-two can be decoded together (then this field will be AB), resulting in even
-higher error correction capacity than one block alone would have.
-
-To improve the error correction capacity even further, the `all` pattern
-merges multiple data blocks that are found at the expected distance. The
-combined decoded message will often be the most reliable result (meaning that
-even if all other patterns were incorrect, this could still be right).
-
-The most important options for getting a watermark are:
-
---key <filename>::
-Use watermarking key from file <filename> (see <<key>>).
-
---detect-speed::
---detect-speed-patient::
-Detect and correct replay speed difference (see <<speed>>).
-
---json <file>::
-Write results to <file> in machine readable JSON format.
-
---chunk-size <minutes>::
-Set chunk size for memory/speed tradeoff. Larger chunk sizes result in
-faster detection but higher memory usage. Default: 30 minutes.
-
---sync-threshold <t>::
-Set threshold for minimum sync quality. Patterns with sync scores higher than
-this threshold are considered relevant and are decoded. The default (0.35) is
-usually fine.
-
---n-best <n>::
-In addition to all patterns that are considered relevant due to their sync
-score, this parameter ensures that at least <n> matches are decoded, even if
-their sync score is low. This can help in situations where the quality of the
-input material is low, so that no patterns have a high enough sync score to be
-considered relevant. On the other hand this makes watermark detection slower,
-especially when many keys are used, so if performance is more important than
-accuracy, using `--n-best 0` can be used to disable n-best decoding.  Default:
-at least decode 8 matches.
-
-[[key]]
-== Watermark Key
-
-Since the software is Open Source, a watermarking key should be used to ensure
-that the message bits cannot be retrieved by somebody else (which would also
-allow removing the watermark without loss of quality). The watermark key
-controls all pseudo-random parameters of the algorithm. This means that
-it determines which frequency bands are increased or decreased to store a
-0 bit or a 1 bit. Without the key, it is impossible to decode the message
-bits from the audio file alone.
-
-Our watermarking key is a 128-bit AES key. A key can be generated using
-
-  audiowmark gen-key test.key
-
-and can be used for the add/get commands as follows:
-
-  audiowmark add --key test.key in.wav out.wav 0123456789abcdef0011223344556677
-  audiowmark get --key test.key out.wav
-
-Keys can be named using the `gen-key --name` option, and the key name will be
-reported for each match:
-
-  audiowmark gen-key oct23.key --name "October 2023"
-
-Finally, it is possible to use the `--key` option more than once for watermark
-detection. In this case, all keys that are specified will be tried. This is
-useful if you change keys on a regular basis, and passing multiple keys is
-more efficient than performing watermark detection multiple times with one
-key.
-
-  audiowmark get --key oct23.key --key nov23.key --key dec23.key out.wav
-
-[[strength]]
-== Watermark Strength
-
-The watermark strength parameter affects how much the watermarking algorithm
-modifies the input signal. A stronger watermark is more audible, but also more
-robust against modifications. The default strength is 10. A watermark with that
-strength is recoverable after mp3/ogg encoding with 128kbit/s or higher. In our
-informal listening tests, this setting also has a very good subjective quality.
-
-A higher strength (for instance 15) would be helpful for instance if robustness
-against multiple conversions or conversions to low bit rates (i.e. 64kbit/s) is
-desired.
-
-A lower strength (for instance 6) makes the watermark less audible, but also
-less robust. Strengths below 5 are not recommended. The strength has to be
-provided for `audiowmark add`. Fractional strengths (like 7.5) are possible.
-
-  audiowmark add --strength 15 in.wav out.wav 0123456789abcdef0011223344556677
-
-[[rec-payload]]
-== Recommendations for the Watermarking Payload
-
-Although `audiowmark` does not specify what the 128-bit message stored in the
-watermark should be, it was designed under the assumption that the message
-should be a *hash* or *HMAC* of some sort.
-
-Lets look at a typical use case. We have a song called *Dreams* by an artist
-called *Alice*. A user called *John Smith* downloads a watermarked copy.
-
-Later, we find this file somewhere on the internet. Typically we want to answer
-the questions:
-
- * is this one of the files we previously watermarked?
- * what song/artist is this?
- * which user shared it?
-
-_When the user downloads a watermarked copy_, we construct a string that
-contains all information we need to answer our questions, for example
-like this:
-
-  Artist:Alice|Title:Dreams|User:John Smith
-
-To obtain the 128-bit message, we can hash this string, for instance by
-using the first 128 bits of a SHA-256 hash like this:
-
-  $ STRING='Artist:Alice|Title:Dreams|User:John Smith'
-  $ MSG=`echo -n "$STRING" | sha256sum | head -c 32`
-  $ echo $MSG
-  ecd057f0d1fbb25d6430b338b5d72eb2
-
-This 128-bit message can be used as watermark:
-
-  $ audiowmark add --key my.key song.wav song.wm.wav $MSG
-
-At this point, we should also *create a database entry* consisting of the
-hash value `$MSG` and the corresponding string `$STRING`.
-
-The shell commands for creating the hash are listed here to provide a
-simplified example. Fields (like the song title) can contain the characters `'`
-and `|`, so these cases need to be dealt with.
-
-_If we find a watermarked copy of the song on the net_, the first step is to
-detect the watermark message using
-
-  $ audiowmark get --key my.key song.wm.wav
-  pattern  0:05 ecd057f0d1fbb25d6430b338b5d72eb2 1.377 0.068 A
-  pattern  0:57 ecd057f0d1fbb25d6430b338b5d72eb2 1.392 0.109 B
-  [...]
-
-The second step is to perform a *database lookup* for each result returned by
-`audiowmark`. If we find a matching entry in our database, this is one of the
-files we previously watermarked.
-
-As a last step, we can use the string stored in the database, which contains
-the song/artist and the user that shared it.
-
-_The advantages of using a hash as message are:_
-
-1. Although `audiowmark` sometimes produces *false positives*, this doesn't
-matter, because it is extremely unlikely that a false positive will match an
-existing database entry.
-
-2. Even if a few *bit errors* occur, it is extremely unlikely that a song
-watermarked for user A will be attributed to user B, simply because all hash
-bits depend on the user. So this is a much better payload than storing a user
-ID, artist ID and song ID in the message bits directly.
-
-3. It is *easy to extend*, because we can add any fields we need to the hash
-string. For instance, if we want to store the name of the album, we can simply
-add it to the string.
-
-4. If the hash matches exactly, it is really *hard to deny* that it was this
-user who shared the song. How else could all 128 bits of the hash match the
-message bits decoded by `audiowmark`?
-
-[[speed]]
-== Speed Detection
-
-If a watermarked audio signal is played back a little faster or slower than the
-original speed, watermark detection will fail. This could happen by accident if
-the digital watermark was converted to an analog signal and back and the
-original speed was not (exactly) preserved. It could also be done intentionally
-as an attack to avoid the watermark from being detected.
-
-In order to be able to find the watermark in these cases, `audiowmark` can try
-to figure out the speed difference to the original audio signal and correct the
-replay speed before detecting the watermark. The search range for the replay
-speed is approximately *[0.8..1.25]*.
-
-Example: add a watermark to `in.wav` and increase the replay speed by 5% using
-`sox`.
-[subs=+quotes]
-....
-  *$ audiowmark add in.wav out.wav 0123456789abcdef0011223344556677*
-  [...]
-  *$ sox out.wav out1.wav speed 1.05*
+$ audiowmark get out.wav
+pattern 0:05 0123456789abcdef0011223344556677 1.358 0.059 A
+pattern 0:57 0123456789abcdef0011223344556677 1.426 0.050 B
+pattern 0:57 0123456789abcdef0011223344556677 1.392 0.055 AB
+pattern 1:49 0123456789abcdef0011223344556677 1.453 0.074 A
+pattern 2:40 0123456789abcdef0011223344556677 1.359 0.080 B
+pattern 2:40 0123456789abcdef0011223344556677 1.406 0.077 AB
+pattern all 0123456789abcdef0011223344556677 1.399 0.035
 ....
 
-Without speed detection, we get no results. With speed detection the speed
-difference is detected and corrected so we get results.
-[subs=+quotes]
-....
-  *$ audiowmark get out1.wav*
-  *$ audiowmark get out1.wav --detect-speed*
-  speed 1.049966
-  pattern  0:05 0123456789abcdef0011223344556677 1.209 0.147 A-SPEED
-  pattern  0:57 0123456789abcdef0011223344556677 1.301 0.143 B-SPEED
-  pattern  0:57 0123456789abcdef0011223344556677 1.255 0.145 AB-SPEED
-  pattern  1:49 0123456789abcdef0011223344556677 1.380 0.173 A-SPEED
-  pattern   all 0123456789abcdef0011223344556677 1.297 0.130 SPEED
-....
+O output de audiowmark get é projetado para ser lido por máquinas. Cada linha que começa com pattern contém uma mensagem decodificada.
 
-The speed detection algorithm is not enabled by default because it is
-relatively slow (total cpu time required) and needs a lot of memory. However
-the search is automatically run in parallel using many threads on systems with
-many cpu cores. So on good hardware it makes sense to always enable this option
-to be robust to replay speed attacks.
+O primeiro campo é o timestamp indicando a posição do bloco de dados.
 
-There are two versions of the speed detection algorithm, `--detect-speed` and
-`--detect-speed-patient`. The difference is that the patient version takes
-more cpu time to detect the speed, but produces more accurate results.
+O segundo campo é a mensagem decodificada.
 
-== Short Payload (deprecated)
+O terceiro campo é a pontuação de sincronização (quanto maior, melhor).
 
-**The support for short payload is now deprecated and will probably be removed in
-some newer version**, mainly because with a 128-bit HMAC based message, you can
-really be 100% certain that there are no false positives, so that if you see a
-certain payload, you can be sure that it was the watermark that was originally
-added. For short payload, there is a (very very small) probablity for
-generating a false positive, and there is no way of detecting it if this has
-happened.
+O quarto campo é o erro de decodificação (quanto menor, melhor).
 
-By default, the watermark will store a 128-bit message. In this mode, we
-recommend using a 128bit hash (or HMAC) as payload. No error checking is
-performed, the user needs to test patterns that the watermarker decodes to
-ensure that they really are one of the expected patterns, not a decoding
-error.
+O quinto campo indica o tipo de bloco: A, B ou AB.
 
-As an alternative, an experimental short payload option is available, for very
-short payloads (12, 16 or 20 bits). It is enabled using the `--short <bits>`
-command line option, for instance for 16 bits:
+== Chave de Watermark
 
-  audiowmark add --short 16 in.wav out.wav abcd
-  audiowmark get --short 16 out.wav
+Uma chave de watermark garante que os bits da mensagem não possam ser recuperados por terceiros. A chave controla todos os parâmetros pseudo-aleatórios do algoritmo.
 
-Internally, a larger set of bits is sent to ensure that decoded short patterns
-are really valid, so in this mode, error checking is performed after decoding,
-and only valid patterns are reported.
+Exemplo de criação de chave:
 
-Besides error checking, the advantage of a short payload is that fewer bits
-need to be sent, so decoding will more likely to be successful on shorter
-clips.
+audiowmark gen-key test.key
 
-== Video Files
+Usando a chave nos comandos add/get:
 
-For video files, `videowmark` can be used to add a watermark to the audio track
-of video files. To add a watermark, use
+audiowmark add --key test.key in.wav out.wav 0123456789abcdef0011223344556677
+audiowmark get --key test.key out.wav
 
-[subs=+quotes]
-....
-  *$ videowmark add in.avi out.avi 0123456789abcdef0011223344556677*
-  Audio Codec:  -c:a mp3 -ab 128000
-  Input:        in.avi
-  Output:       out.avi
-  Message:      0123456789abcdef0011223344556677
-  Strength:     10
+== Força da Watermark
 
-  Time:         3:53
-  Sample Rate:  44100
-  Channels:     2
-  Data Blocks:  4
-....
+O parâmetro strength define o quanto a marca altera o sinal de entrada.
 
-To detect a watermark, use
+Maior força: mais audível, mais robusta.
 
-[subs=+quotes]
-....
-  *$ videowmark get out.avi*
-  pattern  0:05 0123456789abcdef0011223344556677 1.294 0.142 A
-  pattern  0:57 0123456789abcdef0011223344556677 1.191 0.144 B
-  pattern  0:57 0123456789abcdef0011223344556677 1.242 0.145 AB
-  pattern  1:49 0123456789abcdef0011223344556677 1.215 0.120 A
-  pattern  2:40 0123456789abcdef0011223344556677 1.079 0.128 B
-  pattern  2:40 0123456789abcdef0011223344556677 1.147 0.126 AB
-  pattern   all 0123456789abcdef0011223344556677 1.195 0.104
-....
+Menor força: menos audível, menos robusta.
 
-The key and strength can be set using the command line options
+Exemplo:
 
---key <filename>::
-Use watermarking key from file <filename> (see <<key>>).
+audiowmark add --strength 15 in.wav out.wav 0123456789abcdef0011223344556677
 
---strength <s>::
-Set the watermarking strength (see <<strength>>).
+== Recomendações para o Payload da Watermark
 
-Videos can be watermarked on-the-fly using <<hls>>.
+O payload de 128 bits deve ser um hash ou HMAC.
 
-== Output as Stream
+Exemplo de uso:
 
-Usually, an input file is read, watermarked and an output file is written.
-This means that it takes some time before the watermarked file can be used.
+STRING='Artist:Alice|Title:Dreams|User:John Smith'
+MSG=echo -n "$STRING" | sha256sum | head -c 32
+audiowmark add --key my.key song.wav song.wm.wav $MSG
 
-An alternative is to output the watermarked file as stream to stdout. One use
-case is sending the watermarked file to a user via network while the
-watermarker is still working on the rest of the file. Here is an example how to
-watermark a wav file to stdout:
+== Detecção de Velocidade (Speed Detection)
 
-  audiowmark add in.wav - 0123456789abcdef0011223344556677 | play -
+Se o áudio marcado for reproduzido mais rápido ou mais lento, a detecção pode falhar. Para corrigir:
 
-In this case the file in.wav is read, watermarked, and the output is sent
-to stdout. The "play -" can start playing the watermarked stream while the
-rest of the file is being watermarked.
+audiowmark get out1.wav --detect-speed
 
-If - is used as output, the output is a valid .wav file, so the programs
-running after `audiowmark` will be able to determine sample rate, number of
-channels, bit depth, encoding and so on from the wav header.
+Existem duas versões: --detect-speed e --detect-speed-patient (mais precisa, mas mais lenta).
 
-Note that all input formats supported by audiowmark can be used in this way,
-for instance flac/mp3:
+== Arquivos de Vídeo
 
-  audiowmark add in.flac - 0123456789abcdef0011223344556677 | play -
-  audiowmark add in.mp3 - 0123456789abcdef0011223344556677 | play -
+Use videowmark para adicionar marca d’água à trilha de áudio de vídeos:
 
-== Input from Stream
+videowmark add in.avi out.avi 0123456789abcdef0011223344556677
+videowmark get out.avi
 
-Similar to the output, the `audiowmark` input can be a stream. In this case,
-the input must be a valid .wav file. The watermarker will be able to
-start watermarking the input stream before all data is available. An
-example would be:
+== Entrada e Saída via Stream
 
-  cat in.wav | audiowmark add - out.wav 0123456789abcdef0011223344556677
+É possível processar streams de áudio:
 
-It is possible to do both, input from stream and output as stream.
+Saída como stream:
 
-  cat in.wav | audiowmark add - - 0123456789abcdef0011223344556677 | play -
+audiowmark add in.wav - 0123456789abcdef0011223344556677 | play -
 
-Streaming input is also supported for watermark detection.
+Entrada como stream:
 
-  cat in.wav | audiowmark get -
+cat in.wav | audiowmark add - out.wav 0123456789abcdef0011223344556677
 
-== Wav Pipe Format
+Pipe WAV longo:
 
-In some cases, the length of the streaming input is not known by the program
-that produces the stream. For instance consider a mp3 that is being decoded by
-madplay.
+cat in.mp3 | madplay -o wave:- - | audiowmark add --input-format wav-pipe --output-format rf64 - out.wav f0
 
-  cat in.mp3 |
-    madplay -o wave:- - |
-    audiowmark add - out.wav f0
+== Streams Raw
 
-Since madplay doesn't know the length of the output when it starts decoding the
-mp3, the best it can do is to fill the wav header with a big number. And
-indeed, audiowmark will watermark the stream, but also print a warning like
-this:
-
-  audiowmark: warning: unexpected EOF; input frames (1073741823) != output frames (8316288)
-
-This may sound harmless, but for very long input streams, this will also
-truncate the audio input after this length. If you already know that you need
-to input a wav file from a pipe (without correct length in the header) and
-simply want to watermark all of it, it is better to use the `wav-pipe` format:
-
-  cat in.mp3 |
-    madplay -o wave:- - |
-    audiowmark add --input-format wav-pipe --output-format rf64 - out.wav f0
-
-This will not print a warning, and it also works correctly for long input
-streams. Note that using `rf64` as output format is necessary for huge output
-files (larger than 4G).
-
-Similar to pipe input, audiowmark can write a wav header with a huge number (in
-cases where it does not know the length in advance) if the output format is set
-to `wav-pipe`.
-
-  cat in.mp3 |
-    madplay -o wave:- - |
-    audiowmark add --input-format wav-pipe --output-format wav-pipe - - f0 |
-    lame - > out.mp3
-
-If you need both, `wav-pipe` input and output, a shorter way to write it is
-using `--format wav-pipe`, like this:
-
-  cat in.mp3 |
-    madplay -o wave:- - |
-    audiowmark add --format wav-pipe - - f0 |
-    lame - > out.mp3
-
-== Raw Streams
-
-So far, all streams described here are essentially wav streams, which means
-that the wav header allows `audiowmark` to determine sample rate, number of
-channels, bit depth, encoding and so forth from the stream itself, and the a
-wav header is written for the program after `audiowmark`, so that this can
-figure out the parameters of the stream.
-
-If the program before or after `audiowmark` doesn't support wav headers, raw
-streams can be used instead. The idea is to set all information that is needed
-like sample rate, number of channels,... manually.  Then, headerless data can
-be processed from stdin and/or sent to stdout.
+Para streams sem header WAV, é necessário informar manualmente:
 
 --input-format raw::
 --output-format raw::
---format raw::
-
-These can be used to set the input format or output format to raw. The
-last version sets both, input and output format to raw.
-
 --raw-rate <rate>::
-
-This should be used to set the sample rate. The input sample rate and
-the output sample rate will always be the same (no resampling is
-done by the watermarker). There is no default for the sampling rate,
-so this parameter must always be specified for raw streams.
-
 --raw-input-bits <bits>::
---raw-output-bits <bits>::
---raw-bits <bits>::
-
-The options can be used to set the input number of bits, the output number of
-bits or both. The number of bits can be `16`, `24` or `32`. The default number
-of bits is `16`.
-
---raw-input-endian <endian>::
---raw-output-endian <endian>::
---raw-endian <endian>::
-
-These options can be used to set the input/output endianness or both.
-The <endian> parameter can either be `little` or `big`. The default
-endianness is `little`.
-
---raw-input-encoding <encoding>::
---raw-output-encoding <encoding>::
---raw-encoding <encoding>::
-
-These options can be used to set the input/output encoding or both.  The
-<encoding> parameter can be `signed`, `unsigned`, `float` or `double`. The
-default encoding is `signed`. Using `float` (or `double`) encoding
-automatically sets the number of bits to `32` (or `64`).
-
 --raw-channels <channels>::
 
-This can be used to set the number of channels. Note that the number
-of input channels and the number of output channels must always be the
-same. The watermarker has been designed and tested for stereo files,
-so the number of channels should really be `2`. This is also the
-default.
+== Outras Opções de Linha de Comando
 
-== Other Command Line Options
+--output-format rf64:: (permite arquivos WAV > 4GB)
+--q, --quiet:: (desativa mensagens)
+--strict:: (ativa checagem rigorosa de erros)
 
---output-format rf64::
+== HTTP Live Streaming (HLS)
 
-Regular wav files are limited to 4GB in size. By using this option,
-`audiowmark` will write RF64 wave files, which do not have this size limit.
-This is not the default because not all programs might be able to read RF64
-wave files.
+HLS permite marcar o áudio enquanto ele é transmitido:
 
---q, --quiet::
+Preparar segmentos:
 
-Disable all information messages generated by `audiomark`.
+ffmpeg -i video.mp4 -f hls -master_pl_name replay.m3u8 -c:a aac -ab 192k -var_stream_map "a:0,agroup:aud v:0,agroup:aud" -hls_playlist_type vod -hls_list_size 0 -hls_time 10 vs%v/out.m3u8
 
---strict::
+Preparar áudio para watermark:
 
-This option will enable strict error checking, which may in some situations
-make `audiowmark` return an error, where it could continue.
+audiowmark hls-prepare vs0 vs0prep out.m3u8 video.mp4
 
-[[hls]]
-== HTTP Live Streaming
+Adicionar watermark ao segmento:
 
-=== Introduction for HLS
+audiowmark hls-add vs0prep/out5.ts send5.ts 0123456789abcdef0011223344556677
 
-HTTP Live Streaming (HLS) is a protocol to deliver audio or video streams via
-HTTP.  One example for using HLS in practice would be: a user watches a video
-in a web browser with a player like `hls.js`. The user is free to
-play/pause/seek the video as he wants. `audiowmark` can watermark the audio
-content while it is being transmitted to the user.
+== Compilando do Código Fonte
 
-HLS splits the contents of each stream into small segments. For the watermarker
-this means that if the user seeks to a position far ahead in the stream, the
-server needs to start sending segments from where the new play position is, but
-everything in between can be ignored.
+./configure
+make
+make install
 
-Another important property of HLS is that it allows separate segments for the
-video and audio stream of a video. Since we watermark only the audio track of a
-video, the video segments can be sent as they are (and different users can get
-the same video segments). What is watermarked are the audio segments only, so
-here instead of sending the original audio segments to the user, the audio
-segments are watermarked individually for each user, and then transmitted.
+No Windows/Cygwin: [build instructions for Cygwin]
 
-Everything necessary to watermark HLS audio segments is available within
-`audiowmark`. The server side support which is necessary to send the right
-watermarked segment to the right user is not included.
+== Dependências
 
-[[hls-requirements]]
-=== HLS Requirements
+libfftw3
 
-HLS support requires some headers/libraries from ffmpeg:
+libsndfile
 
-* libavcodec
-* libavformat
-* libavutil
-* libswresample
+libgcrypt
 
-To enable these as dependencies and build `audiowmark` with HLS support, use the
-`--with-ffmpeg` configure option:
+libzita-resampler
 
-[subs=+quotes]
-....
-*$ ./configure --with-ffmpeg*
-....
+libmpg123
 
-In addition to the libraries, `audiowmark` also uses the two command line
-programs from ffmpeg, so they need to be installed:
+== Compilando fftw3
 
-* ffmpeg
-* ffprobe
-
-=== Preparing HLS segments
-
-The first step for preparing content for streaming with HLS would be splitting
-a video into segments. For this documentation, we use a very simple example
-using ffmpeg. No matter what the original codec was, at this point we force
-transcoding to AAC with our target bit rate, because during delivery the stream
-will be in AAC format.
-
-[subs=+quotes]
-....
-*$ ffmpeg -i video.mp4 -f hls -master_pl_name replay.m3u8 -c:a aac -ab 192k \
-  -var_stream_map "a:0,agroup:aud v:0,agroup:aud" \
-  -hls_playlist_type vod -hls_list_size 0 -hls_time 10 vs%v/out.m3u8*
-....
-
-This splits the `video.mp4` file into an audio stream of segments in the `vs0`
-directory and a video stream of segments in the `vs1` directory. Each segment
-is approximately 10 seconds long, and a master playlist is written to
-`replay.m3u8`.
-
-Now we can add the relevant audio context to each audio ts segment. This is
-necessary so that when the segment is watermarked in order to be transmitted to
-the user, `audiowmark` will have enough context available before and after the
-segment to create a watermark which sounds correct over segment boundaries.
-
-[subs=+quotes]
-....
-*$ audiowmark hls-prepare vs0 vs0prep out.m3u8 video.mp4*
-AAC Bitrate:  195641 (detected)
-Segments:     18
-Time:         2:53
-....
-
-This steps reads the audio playlist `vs0/out.m3u8` and writes all segments
-contained in this audio playlist to a new directory `vs0prep` which
-contains the audio segments prepared for watermarking.
-
-The last argument in this command line is `video.mp4` again. All audio
-that is watermarked is taken from this audio master. It could also be
-supplied in `wav` format. This makes a difference if you use lossy
-compression as target format (for instance AAC), but your original
-video has an audio stream with higher quality (i.e. lossless).
-
-=== Watermarking HLS segments
-
-So with all preparations made, what would the server have to do to send a
-watermarked version of the 6th audio segment `vs0prep/out5.ts`?
-
-[subs=+quotes]
-....
-*$ audiowmark hls-add vs0prep/out5.ts send5.ts 0123456789abcdef0011223344556677*
-Message:      0123456789abcdef0011223344556677
-Strength:     10
-
-Time:         0:15
-Sample Rate:  44100
-Channels:     2
-Data Blocks:  0
-AAC Bitrate:  195641
-....
-
-So instead of sending out5.ts (which has no watermark) to the user, we would
-send send5.ts, which is watermarked.
-
-In a real-world use case, it is likely that the server would supply the input
-segment on stdin and send the output segment as written to stdout, like this
-
-[subs=+quotes]
-....
-*$ [...] | audiowmark hls-add - - 0123456789abcdef0011223344556677 | [...]*
-[...]
-....
-
-The usual parameters are supported in `audiowmark hls-add`, like
-
---key <filename>::
-Use watermarking key from file <filename> (see <<key>>).
-
---strength <s>::
-Set the watermarking strength (see <<strength>>).
-
-The AAC bitrate for the output segment can be set using:
-
---bit-rate <bit_rate>::
-Set the AAC bit-rate for the generated watermarked segment.
-
-The rules for the AAC bit-rate of the newly encoded watermarked segment are:
-
-* if the --bit-rate option is used during `hls-add`, this bit-rate will be used
-* otherwise, if the `--bit-rate` option is used during `hls-prepare`, this bit-rate will be used
-* otherwise, the bit-rate of the input material is detected during `hls-prepare`
-
-== Compiling from Source
-
-Stable releases are available from http://uplex.de/audiowmark
-
-The steps to compile the source code are:
-
-        ./configure
-        make
-        make install
-
-If you build from git (which doesn't include `configure`), the first
-step is `./autogen.sh`. In this case, you need to ensure that (besides
-the dependencies listed below) the `autoconf-archive` package is
-installed.
-
-== Compiling from Source on Windows/Cygwin
-
-Windows is not an officially supported platform. However, if you want to
-build audiowmark (and videowmark) from source on windows, one way to do
-so is to use Cygwin. Andreas Strohmeier provided
-https://raw.githubusercontent.com/swesterfeld/audiowmark/master/docs/win-x64-build-guide.txt[*build instructions for Cygwin*].
-
-== Dependencies
-
-If you compile from source, `audiowmark` needs the following libraries:
-
-* libfftw3
-* libsndfile
-* libgcrypt
-* libzita-resampler
-* libmpg123
-
-If you want to build with HTTP Live Streaming support, see also
-<<hls-requirements>>.
-
-== Building fftw
-
-`audiowmark` needs the single prevision variant of fftw3.
-
-If you are building fftw3 from source, use the `--enable-float`
-configure parameter to build it, e.g.::
-
-	cd ${FFTW3_SOURCE}
-	./configure --enable-float --enable-sse && \
-	make && \
-	sudo make install
-
-or, when building from git
-
-	cd ${FFTW3_GIT}
-	./bootstrap.sh --enable-shared --enable-sse --enable-float && \
-	make && \
-	sudo make install
+cd ${FFTW3_SOURCE}
+./configure --enable-float --enable-sse && make && sudo make install
 
 == Docker Build
 
-You should be able to execute `audiowmark` via Docker.
-Example that outputs the usage message:
-
-  docker build -t audiowmark .
-  docker run -v <local-data-directory>:/data --rm -i audiowmark -h
+docker build -t audiowmark .
+docker run -v <local-data-directory>:/data --rm -i audiowmark -h
